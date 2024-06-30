@@ -12,7 +12,7 @@ pub struct Sink {
     pub mute: bool,
 }
 
-pub async fn list_sinks() -> Result<Vec<Source>, Box<dyn Error>> {
+pub async fn list_sinks() -> Result<Vec<Sink>, Box<dyn Error>> {
     let output = Command::new("pactl")
         .arg("list")
         .arg("sinks")
@@ -32,7 +32,7 @@ pub async fn list_sinks() -> Result<Vec<Source>, Box<dyn Error>> {
         }
 
         if line.starts_with("Mute: ") {
-            sources.push(Source {
+            sources.push(Sink {
                 name: name.clone(),
                 mute: line.contains("Mute: yes"),
             });
