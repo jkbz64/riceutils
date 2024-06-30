@@ -1,8 +1,7 @@
-pub mod types;
-pub mod utils;
+use lib::types::Response;
 
-use types::Response;
-use utils::{is_input_muted, process_signals};
+use lib::pulse::is_output_muted;
+use lib::utils::process_signals;
 
 use std::error::Error;
 
@@ -10,11 +9,11 @@ use async_process::{ChildStdout, Command, Stdio};
 use futures_lite::{future, io::BufReader, prelude::*};
 
 fn output(muted: bool) {
-    let mut text = "";
+    let mut text = "";
     let mut class = "not-muted";
 
     if muted {
-        text = "";
+        text = "󰝟";
         class = "muted";
     }
 
@@ -28,18 +27,18 @@ async fn process_lines(stdout: ChildStdout) -> Result<(), Box<dyn Error>> {
     let mut lines = BufReader::new(stdout).lines();
 
     while let Some(Ok(line)) = lines.next().await {
-        if !line.contains("Event 'change' on source") {
+        if !line.contains("Event 'change' on sink") {
             continue;
         }
 
-        output(is_input_muted().await?);
+        output(is_output_muted().await?);
     }
 
     Ok(())
 }
 
 async fn run() -> Result<(), Box<dyn Error>> {
-    output(is_input_muted().await?);
+    output(is_output_muted().await?);
 
     let mut child = Command::new("pactl")
         .arg("subscribe")

@@ -3,13 +3,8 @@ name = "riceutils"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = 'mute'
-path = 'src/mute.rs'
-
-[[bin]]
-name = 'mic'
-path = 'src/mic.rs'
+[lib]
+name = 'lib'
 
 [dependencies]
 async-process = "2.2.3"
