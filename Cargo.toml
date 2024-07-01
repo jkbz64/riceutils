@@ -16,3 +16,4 @@ signal-hook = "0.3.17"
 xdg = "2.5.2"
 rusqlite = { version = "0.31.0", features = ["bundled"] }
 clap = { version = "4.5.8", features = ["derive"] }
+xdg-user = "0.2.1"
