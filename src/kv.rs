@@ -83,4 +83,13 @@ impl Kv {
 
         stmt.query_row([key], |row| row.get(0)) as Result<i64, rusqlite::Error>
     }
+
+    pub fn del(&self, key: &str) -> () {
+        self.connection
+            .execute(
+                "DELETE FROM dictionary WHERE key = ?1",
+                rusqlite::params![key],
+            )
+            .expect("failed to delete from the database");
+    }
 }
