@@ -4,3 +4,4 @@ My collection of rice utilities for waybar components rewritten from bash script
 
 - Speaker mute detection
 - Microphone mute detection
+- Screen recording indicator
