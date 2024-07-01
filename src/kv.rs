@@ -1,5 +1,4 @@
 use rusqlite::Connection;
-use std::error::Error;
 
 pub struct Kv {
     connection: Connection,
