@@ -62,8 +62,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.listen {
         loop {
-            let r = c.getvars(ip, id, key, &vec![vars::POW])?;
-            output(r.dat[0].as_u64().unwrap() == 1);
+            if let Ok(r) = c.getvars(ip, id, key, &vec![vars::POW]) {
+                output(r.dat[0].as_u64().unwrap() == 1);
+            } else {
+                output(false);
+            }
 
             std::thread::sleep(std::time::Duration::from_secs(1));
         }
