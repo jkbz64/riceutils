@@ -1,3 +1,4 @@
+use core_affinity::CoreId;
 use lib::types::Response;
 
 use gree::{sync_client::*, GreeClientConfig, *};
@@ -40,6 +41,9 @@ fn output(running: bool) {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Pin to 0 CPU (E-Core)
+    core_affinity::set_for_current(CoreId { id: 0 });
+
     let args = Args::parse();
 
     let cc = GreeClientConfig::default();
