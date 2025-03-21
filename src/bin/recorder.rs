@@ -1,3 +1,5 @@
+use core_affinity::CoreId;
+
 use lib::kv::Kv;
 use lib::types::Response;
 
@@ -40,6 +42,9 @@ fn output(secs: Option<i64>) {
 }
 
 fn main() {
+    // Pin to 0 CPU (E-Core)
+    core_affinity::set_for_current(CoreId { id: 0 });
+
     let db = Kv::new();
 
     let args = Args::parse();
