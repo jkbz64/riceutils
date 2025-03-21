@@ -1,3 +1,5 @@
+use core_affinity::CoreId;
+
 use lib::types::Response;
 use yeelight::{Bulb, Properties, Property};
 
@@ -14,6 +16,9 @@ struct Args {
 
     #[arg(long, default_value_t = false)]
     toggle_bg: bool,
+
+    #[arg(long)]
+    color: Option<u16>,
 
     #[arg(long, default_value_t = false)]
     listen: bool,
@@ -39,8 +44,7 @@ fn output(main: bool, bg: bool) {
     );
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
     let ip = args.ip;
 
@@ -60,28 +64,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let _ = tokio::time::timeout(std::time::Duration::from_secs(5), bulb.bg_toggle()).await?;
     }
 
+    if let Some(color) = args.color {
+        let mut bulb = Bulb::connect(&ip, 55443)
+            .await
+            .expect("failed to connect to bulb");
+
+        bulb.bg_set_hsv(
+            color,
+            100,
+            yeelight::Effect::Sudden,
+            std::time::Duration::from_secs(1),
+        )
+        .await?;
+    }
+
     if args.listen {
         loop {
-            let result = {
-                let mut bulb = Bulb::connect(&ip, 55443)
+            if let Ok(mut bulb) = Bulb::connect(&ip, 55443).await {
+                let result = {
+                    tokio::time::timeout(
+                        std::time::Duration::from_secs(1),
+                        bulb.get_prop(&Properties(vec![Property::Power, Property::BgPower])),
+                    )
                     .await
-                    .expect("failed to connect to bulb");
+                };
 
-                tokio::time::timeout(
-                    std::time::Duration::from_secs(1),
-                    bulb.get_prop(&Properties(vec![Property::Power, Property::BgPower])),
-                )
-                .await
-            };
-
-            if let Ok(result) = result {
-                if let Ok(properties) = result {
-                    if let Some(properties) = properties {
-                        output(properties[0] == "on", properties[1] == "on");
-                    } else {
-                        output(false, false);
+                if let Ok(result) = result {
+                    if let Ok(properties) = result {
+                        if let Some(properties) = properties {
+                            output(properties[0] == "on", properties[1] == "on");
+                        } else {
+                            output(false, false);
+                        }
                     }
                 }
+            } else {
+                output(false, false);
             }
 
             std::thread::sleep(std::time::Duration::from_secs(1));
@@ -89,4 +107,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
+}
+
+use std::{
+    ops::AddAssign,
+    sync::{Arc, LazyLock, Mutex},
+};
+
+// Initialize static counter
+static INC: LazyLock<Arc<Mutex<usize>>> = LazyLock::new(|| Arc::new(Mutex::new(0)));
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    Ok(tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .worker_threads(2)
+        .on_thread_start(|| {
+            let mut id = INC.lock().unwrap();
+            core_affinity::set_for_current(CoreId { id: id.clone() });
+            id.add_assign(1);
+        })
+        .build()
+        .unwrap()
+        .block_on(run())?)
 }
