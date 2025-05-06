@@ -1,6 +1,6 @@
 use std::error::Error;
 
-use async_process::Command;
+use tokio::process::Command;
 
 pub struct Source {
     pub name: String,

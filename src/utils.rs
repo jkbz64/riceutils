@@ -1,16 +1,14 @@
 use std::error::Error;
 
-use async_process::Child;
-use async_signal::{Signal, Signals};
-use futures_lite::prelude::*;
-use signal_hook::low_level;
+use tokio::signal;
 
-pub async fn process_signals(child: &mut Child) -> Result<(), Box<dyn Error>> {
-    let mut signals = Signals::new(&[Signal::Int, Signal::Term])?;
+pub async fn process_signals() -> Result<(), Box<dyn Error>> {
+    let mut sigint = signal::unix::signal(signal::unix::SignalKind::interrupt())?;
+    let mut sigterm = signal::unix::signal(signal::unix::SignalKind::terminate())?;
 
-    while let Some(signal) = signals.next().await {
-        child.kill()?;
-        low_level::emulate_default_handler(signal.unwrap() as i32).unwrap();
+    tokio::select! {
+        _ = sigint.recv() => {},
+        _ = sigterm.recv() => {},
     }
 
     Ok(())

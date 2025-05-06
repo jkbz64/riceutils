@@ -109,22 +109,12 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-use std::{
-    ops::AddAssign,
-    sync::{Arc, LazyLock, Mutex},
-};
-
-// Initialize static counter
-static INC: LazyLock<Arc<Mutex<usize>>> = LazyLock::new(|| Arc::new(Mutex::new(0)));
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    Ok(tokio::runtime::Builder::new_multi_thread()
+    Ok(tokio::runtime::Builder::new_current_thread()
         .enable_all()
-        .worker_threads(2)
+        .worker_threads(1)
         .on_thread_start(|| {
-            let mut id = INC.lock().unwrap();
-            core_affinity::set_for_current(CoreId { id: id.clone() });
-            id.add_assign(1);
+            core_affinity::set_for_current(CoreId { id: 0 });
         })
         .build()
         .unwrap()

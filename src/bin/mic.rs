@@ -1,12 +1,14 @@
-use lib::types::Response;
-
 use lib::pulse::is_input_muted;
+use lib::types::Response;
 use lib::utils::process_signals;
 
-use std::error::Error;
+use core_affinity::CoreId;
 
-use async_process::{ChildStdout, Command, Stdio};
-use futures_lite::{future, io::BufReader, prelude::*};
+use std::error::Error;
+use std::process::Stdio;
+
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::{Child, Command};
 
 fn output(muted: bool) {
     let mut text = "";
@@ -23,10 +25,14 @@ fn output(muted: bool) {
     );
 }
 
-async fn process_lines(stdout: ChildStdout) -> Result<(), Box<dyn Error>> {
+async fn process_lines(child: &mut Child) -> Result<(), Box<dyn Error>> {
+    let stdout = child
+        .stdout
+        .take()
+        .expect("Child process stdout is not available");
     let mut lines = BufReader::new(stdout).lines();
 
-    while let Some(Ok(line)) = lines.next().await {
+    while let Some(line) = lines.next_line().await? {
         if !line.contains("Event 'change' on source") {
             continue;
         }
@@ -45,18 +51,25 @@ async fn run() -> Result<(), Box<dyn Error>> {
         .stdout(Stdio::piped())
         .spawn()?;
 
-    match child.stdout.take() {
-        Some(stdout) => {
-            let result = future::race(process_signals(&mut child), process_lines(stdout)).await;
-            child.kill()?;
-            return result;
-        }
-        _ => child.kill()?,
-    }
+    tokio::select! {
+        result = process_signals() => result,
+        result = process_lines(&mut child) => result,
+    }?;
+
+    // Ensure the child process is killed
+    let _ = child.kill().await;
 
     Ok(())
 }
 
-fn main() {
-    future::block_on(run()).expect("Got unexpected error");
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    Ok(tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .worker_threads(1)
+        .on_thread_start(|| {
+            core_affinity::set_for_current(CoreId { id: 0 });
+        })
+        .build()
+        .unwrap()
+        .block_on(run())?)
 }
