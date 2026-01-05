@@ -1,9 +1,7 @@
+use clap::Parser;
 use core_affinity::CoreId;
-
 use lib::types::Response;
 use yeelight::{Bulb, Properties, Property};
-
-use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -58,18 +56,21 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     if args.listen {
         loop {
-            if let Ok(mut bulb) = Bulb::connect(&args.ip, args.port).await {
-                if let Ok(Ok(properties)) = tokio::time::timeout(
+            if let Ok(Ok(mut bulb)) = tokio::time::timeout(
+                std::time::Duration::from_secs(2),
+                Bulb::connect(&args.ip, args.port),
+            )
+            .await
+                && let Ok(Ok(properties)) = tokio::time::timeout(
                     std::time::Duration::from_secs(1),
                     bulb.get_prop(&Properties(vec![Property::Power, Property::BgPower])),
                 )
                 .await
-                {
-                    if let Some(properties) = properties {
-                        output(properties[0] == "on", properties[1] == "on");
-                    } else {
-                        output(false, false);
-                    }
+            {
+                if let Some(properties) = properties {
+                    output(properties[0] == "on", properties[1] == "on");
+                } else {
+                    output(false, false);
                 }
             } else {
                 output(false, false);
@@ -78,9 +79,11 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             std::thread::sleep(std::time::Duration::from_secs(1));
         }
     } else {
-        let mut bulb = Bulb::connect(&args.ip, args.port)
-            .await
-            .expect("failed to connect to bulb");
+        let mut bulb = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            Bulb::connect(&args.ip, args.port),
+        )
+        .await??;
 
         if args.toggle {
             let _ = tokio::time::timeout(std::time::Duration::from_secs(5), bulb.toggle()).await?;

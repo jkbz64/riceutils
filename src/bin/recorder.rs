@@ -1,13 +1,10 @@
+use clap::Parser;
 use core_affinity::CoreId;
-
 use lib::kv::Kv;
 use lib::types::Response;
-
 use std::process::Command;
 use std::string::String;
 use std::time::{SystemTime, UNIX_EPOCH};
-
-use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

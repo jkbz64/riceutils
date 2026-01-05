@@ -1,11 +1,9 @@
+use clap::Parser;
 use core_affinity::CoreId;
+use gree::{GreeClientConfig, sync_client::*, *};
 use lib::types::Response;
-
-use gree::{sync_client::*, GreeClientConfig, *};
 use std::str::FromStr;
 use std::{net::IpAddr, result::Result};
-
-use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

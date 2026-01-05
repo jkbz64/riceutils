@@ -1,9 +1,7 @@
+use clap::Parser;
 use core_affinity::CoreId;
 use lib::types::Response;
-
 use std::{fs, path::PathBuf, thread, time::Duration};
-
-use clap::Parser;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

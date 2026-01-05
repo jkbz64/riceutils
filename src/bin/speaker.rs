@@ -1,12 +1,9 @@
+use core_affinity::CoreId;
 use lib::pulse::is_output_muted;
 use lib::types::Response;
 use lib::utils::process_signals;
-
-use core_affinity::CoreId;
-
 use std::error::Error;
 use std::process::Stdio;
-
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 

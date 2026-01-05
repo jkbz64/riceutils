@@ -1,5 +1,4 @@
 use std::error::Error;
-
 use tokio::signal;
 
 pub async fn process_signals() -> Result<(), Box<dyn Error>> {
