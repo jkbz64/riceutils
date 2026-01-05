@@ -11,6 +11,9 @@ struct Args {
     #[arg(long)]
     ip: String,
 
+    #[arg(long, default_value_t = 55443)]
+    port: u16,
+
     #[arg(long, default_value_t = false)]
     toggle: bool,
 
@@ -18,7 +21,13 @@ struct Args {
     toggle_bg: bool,
 
     #[arg(long)]
+    brightness: Option<u8>,
+
+    #[arg(long)]
     color: Option<u16>,
+
+    #[arg(long)]
+    bg_brightness: Option<u8>,
 
     #[arg(long, default_value_t = false)]
     listen: bool,
@@ -46,56 +55,20 @@ fn output(main: bool, bg: bool) {
 
 async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
-    let ip = args.ip;
-
-    if args.toggle {
-        let mut bulb = Bulb::connect(&ip, 55443)
-            .await
-            .expect("failed to connect to bulb");
-
-        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), bulb.toggle()).await?;
-    }
-
-    if args.toggle_bg {
-        let mut bulb = Bulb::connect(&ip, 55443)
-            .await
-            .expect("failed to connect to bulb");
-
-        let _ = tokio::time::timeout(std::time::Duration::from_secs(5), bulb.bg_toggle()).await?;
-    }
-
-    if let Some(color) = args.color {
-        let mut bulb = Bulb::connect(&ip, 55443)
-            .await
-            .expect("failed to connect to bulb");
-
-        bulb.bg_set_hsv(
-            color,
-            100,
-            yeelight::Effect::Sudden,
-            std::time::Duration::from_secs(1),
-        )
-        .await?;
-    }
 
     if args.listen {
         loop {
-            if let Ok(mut bulb) = Bulb::connect(&ip, 55443).await {
-                let result = {
-                    tokio::time::timeout(
-                        std::time::Duration::from_secs(1),
-                        bulb.get_prop(&Properties(vec![Property::Power, Property::BgPower])),
-                    )
-                    .await
-                };
-
-                if let Ok(result) = result {
-                    if let Ok(properties) = result {
-                        if let Some(properties) = properties {
-                            output(properties[0] == "on", properties[1] == "on");
-                        } else {
-                            output(false, false);
-                        }
+            if let Ok(mut bulb) = Bulb::connect(&args.ip, args.port).await {
+                if let Ok(Ok(properties)) = tokio::time::timeout(
+                    std::time::Duration::from_secs(1),
+                    bulb.get_prop(&Properties(vec![Property::Power, Property::BgPower])),
+                )
+                .await
+                {
+                    if let Some(properties) = properties {
+                        output(properties[0] == "on", properties[1] == "on");
+                    } else {
+                        output(false, false);
                     }
                 }
             } else {
@@ -103,6 +76,47 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             std::thread::sleep(std::time::Duration::from_secs(1));
+        }
+    } else {
+        let mut bulb = Bulb::connect(&args.ip, args.port)
+            .await
+            .expect("failed to connect to bulb");
+
+        if args.toggle {
+            let _ = tokio::time::timeout(std::time::Duration::from_secs(5), bulb.toggle()).await?;
+        }
+
+        if args.toggle_bg {
+            let _ =
+                tokio::time::timeout(std::time::Duration::from_secs(5), bulb.bg_toggle()).await?;
+        }
+
+        if let Some(brightness) = args.brightness {
+            bulb.set_bright(
+                brightness,
+                yeelight::Effect::Sudden,
+                std::time::Duration::from_secs(1),
+            )
+            .await?;
+        }
+
+        if let Some(color) = args.color {
+            bulb.bg_set_hsv(
+                color,
+                100,
+                yeelight::Effect::Sudden,
+                std::time::Duration::from_secs(1),
+            )
+            .await?;
+        }
+
+        if let Some(bg_brightness) = args.bg_brightness {
+            bulb.bg_set_bright(
+                bg_brightness,
+                yeelight::Effect::Sudden,
+                std::time::Duration::from_secs(1),
+            )
+            .await?;
         }
     }
 
